@@ -1,0 +1,259 @@
+
+
+const monitoredStreams = [
+  "coremax7",
+  "comster404",
+  "freecodecamp",
+  "ESL_SC2",
+  "OgamingSC2",
+  "cretetion",
+  "storbeck",
+  "habathcx",
+  "RobotCaleb",
+  "noobs2ninjas"
+];
+
+
+
+
+class App extends React.Component{
+  constructor(props) {
+    super(props);
+    this.handleChange = this.handleChange.bind(this);
+    this.getTwitchData = this.getTwitchData.bind(this);
+    this.focus = this.focus.bind(this);
+    this.updateStreamInfo = this.updateStreamInfo.bind(this);
+    this.updateChannelInfo = this.updateChannelInfo.bind(this);
+    this.initStreamMonitor = this.initStreamMonitor.bind(this);
+    this.state = {streamMon: this.initStreamMonitor(),
+                 requestedStatus: "Online"};
+    this.refresh = this.refresh.bind(this);
+
+  }
+  componentDidMount(){
+    //console.log(this.state.streamMon);
+    this.refresh();
+  }
+  render() {
+    return(
+      <div classname = "searchPanel" style = {{}}>
+        <select value={this.state.requestedStatus} onChange={this.handleChange}>
+          <option value="Online">Online</option>
+          <option value="Offline">Offline</option>
+          <option value="Either">Either</option>
+        </select>
+        <button onClick={this.refresh}>Refresh</button>
+        <br />
+        <ChannelDisplay streamMon = {this.state.streamMon} requestedStatus = {this.state.requestedStatus} />
+      </div>
+    );
+  }
+  focus() {
+    this.textInput.focus();
+  }
+  getTwitchData(){
+    
+    const streamURL= "https://wind-bow.glitch.me/twitch-api/streams/";
+    const channelURL = "https://wind-bow.glitch.me/twitch-api/channels/";
+    const userURL = "https://wind-bow.glitch.me/twitch-api/users/";
+    
+    var streamerData = [];
+    
+    for (var i = 0; i < monitoredStreams.length; i++){
+      //console.log(monitoredStreams[i]);
+      var status;
+      var streamName = monitoredStreams[i];
+      var game;
+      var channelURL2;
+      var name;
+      var logo;
+      var status2;
+      var streamerData = [];
+      //console.log(streamName);
+      //fetch from stream
+      fetch(streamURL + streamName)
+        .then((response) => response.json())
+        .then((responseJson) => {
+        //console.log(responseJson);
+        this.updateStreamInfo(responseJson);
+        //console.log('got stream data');
+        }) 
+        .catch((error) => {
+          console.error(error);
+        });
+      fetch(channelURL + streamName)
+        .then((response) => response.json())
+        .then((responseJson) => {
+        //console.log(responseJson);
+        this.updateChannelInfo(responseJson);
+        //console.log('got stream data');
+        }) 
+        .catch((error) => {
+          console.error(error);
+        });
+      
+      
+      
+    }
+    //return streamerData;
+    //console.log(streamerData[0].logo);
+  }
+  handleChange(event){
+    this.setState({requestedStatus: event.target.value});
+  }
+  updateStreamInfo(streamInfo){
+    //console.log(streamInfo);
+    
+    for(var i = 0 ; i < this.state.streamMon.length; i++){
+      var nameSearch = this.state.streamMon[i].name;
+      
+      var index = streamInfo._links.channel.lastIndexOf("/") + 1;
+      var streamName = streamInfo._links.channel.substr(index);
+      //console.log(nameSearch + "vs" + streamName);
+      if (streamName === this.state.streamMon[i].name){
+
+        var newMon = JSON.parse(JSON.stringify(this.state.streamMon[i])) ;
+        if (streamInfo.stream == null){
+          newMon.status = "Offline";
+          newMon.game = "Not currently streaming";
+          //console.log(newMon);
+        } else{
+          newMon.status = "Online";
+          newMon.game = streamInfo.stream.game;
+          newMon.channelURL = streamInfo.stream._links.self;
+          //console.log(newMon);
+        }
+        //TODO: Compare new object to old object before updating it in state 
+        //console.log(newMon);
+        var newMonitors = this.state.streamMon;
+        newMonitors[i] = newMon;
+        this.setState({streamMon: newMonitors});
+      }
+    }
+    
+  }
+  updateChannelInfo(channelInfo){
+    //console.log(channelInfo);
+    
+    for(var i = 0 ; i < this.state.streamMon.length; i++){
+      var nameSearch = this.state.streamMon[i].name;
+      var streamName = channelInfo.name;
+      //console.log(nameSearch + "vs" + streamName);
+      if (streamName.toLowerCase() === this.state.streamMon[i].name.toLowerCase()){
+        //console.log('found it');
+        var newMon = JSON.parse(JSON.stringify(this.state.streamMon[i])) ;
+        //console.log(newMon);
+        //console.log(streamInfo.stream);
+        newMon.exists = true;
+        //console.log(newMon);
+        //logic for retired channels or missing logos
+        
+        newMon.logo = channelInfo.logo;
+        
+        var newMonitors = this.state.streamMon;
+        newMonitors[i] = newMon;
+        this.setState({streamMon: newMonitors});
+      }
+        //TODO: Compare new object to old object before updating it in state 
+      }
+    
+  }
+  initStreamMonitor(){
+    var streamMonitors = [];
+    for(var i = 0; i < monitoredStreams.length; i++){
+      //console.log(monitoredStreams[i]);
+      var streamMonitor = {
+        name: monitoredStreams[i],
+        status: '',
+        game: '',
+        logo: '',
+        channelURL: '',
+        exists: false
+      };
+      streamMonitors.push(streamMonitor);
+      //console.log(streamMonitor);
+    }
+    //console.log(streamMonitors[0].name);
+    //console.log(streamMonitors);
+    return streamMonitors;
+    //console.log(this.state.streamMon[0].name);
+    //console.log(this.state.streamMon[0].name)
+  }
+  refresh(){
+    this.getTwitchData();
+  }
+  
+}
+
+
+function ChannelDisplay(props){
+  return(
+    <div style={{backgroundColor: 'skyblue', border: '3px solid black', padding: '10px', display: 'inline-block'}}>
+      <table style = {{borderCollapse: 'collapse'}}>
+      {
+        props.streamMon.map(function(Mon){
+          console.log(Mon);
+          var logoLink;
+          var game;
+          var accountName;
+          var accountStatus;
+          var accountExists;
+          var channelURL;
+          
+          accountExists = Mon.exists;
+          accountName = Mon.name;
+          accountStatus = Mon.status;
+          logoLink = Mon.logo;
+          channelURL = Mon.channelURL;
+          
+          if (accountExists == false){
+            game = "No Account";
+            logoLink  = "https://thumb.ibb.co/m6WOnv/na.jpg";
+          }else if(Mon.logo == "" || Mon.logo == null){
+            logoLink = "https://thumb.ibb.co/g6N7Ea/sorry.jpg";
+            game = Mon.game;
+          }else{
+            game = Mon.game;
+          }
+          
+          if (Mon.status === props.requestedStatus || props.requestedStatus === "Either"){
+            return(
+            <tr style = {{border: '1px solid grey', justifyContent: 'space-between'}}>
+                <td style= {{height: 70, width: 70, border: '1px solid grey'}}>
+                  <img src = {logoLink} style={{height: 70, width: 70}}/>
+                </td>
+                <td style = {{border: '1px solid grey'}}>
+                  <p>{accountName}</p>
+                </td>
+                <td style = {{border: '1px solid grey'}}>
+                  <p>{game}</p>
+                </td>
+                {channelURL != "" ? (
+                <td style = {{backgroundColor : 'green', border: '1px solid grey'}}>
+                  <p><a href = {channelURL}>{accountStatus}</a></p>
+                </td>) : (
+                <td style = {{backgroundColor : 'red', border: '1px solid grey'}}>
+                  <p>{accountStatus}</p>
+                </td>
+                )
+                    
+                }
+             </tr>
+            );
+          }
+        })
+      }  
+      </table>
+    </div>
+  
+  );
+}
+
+
+
+ReactDOM.render(
+  
+    <App />
+  ,
+  document.getElementById('root')
+);
